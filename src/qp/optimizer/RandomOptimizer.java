@@ -55,6 +55,9 @@ public class RandomOptimizer {
                     nj.setRight(right);
                     nj.setNumBuff(numbuff);
                     return nj;
+                // TODO: Add case for sortmerge join    
+                //case JoinType.SORTMERGE:
+                	
                 default:
                     return node;
             }
