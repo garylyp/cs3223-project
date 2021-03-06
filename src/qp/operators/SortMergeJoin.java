@@ -70,24 +70,6 @@ public class SortMergeJoin extends Join {
 
         lcurs = 0;
         rcurs = 0;
-        
-        leftbatch = sortedLeft.next();
-        int j = 0;
-        while (leftbatch != null) {
-        	System.out.printf("%d\n", j++);
-        	Debug.PPrint(leftbatch);
-        	leftbatch = sortedLeft.next();
-        }
-        
-        rightbatch = sortedRight.next();
-        j = 0;
-        while (rightbatch != null) {
-        	System.out.printf("%d\n", j++);
-        	Debug.PPrint(rightbatch);
-        	rightbatch = sortedRight.next();
-        }
-        
-        
         return true;
     }
 

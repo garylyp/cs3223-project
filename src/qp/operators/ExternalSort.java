@@ -63,8 +63,6 @@ public class ExternalSort extends Operator {
     	return this.numBuff;
     }
 
-
-
     /**
      * Opens the connection to the base operator
      * * Also figures out what are the columns to be
@@ -100,6 +98,9 @@ public class ExternalSort extends Operator {
 
         // merge sorted run
         rfname = mergeSortedRuns(sortedRuns);
+        if (rfname == "") {
+        	return false;
+        }
         
         try {
         	sortedFileBase = new ObjectInputStream(new FileInputStream(rfname));
@@ -155,7 +156,6 @@ public class ExternalSort extends Operator {
         return newExternalSort;
     }
     
-    
     private ArrayList<String> generateSortedRuns(Operator base) {
     	ArrayList<String> sortedRuns = new ArrayList<>();
     	Batch inbatch = base.next();
@@ -182,17 +182,14 @@ public class ExternalSort extends Operator {
 	     		});
 	     		
          		// Write tuples into output file page by page to form a sorted run
-	     		int cnt = 0;
          		Batch outbatch = new Batch(batchsize);
          		for (int j = 0; j < srTuples.size(); j++) {
          			outbatch.add(srTuples.get(j));
          			if (outbatch.isFull()) {
          				out.writeObject(outbatch);
-         				cnt++;
          				outbatch = new Batch(batchsize);
          			}
          		}
-         		System.out.println("Number of pages in sorted run: " + cnt);
          		out.close();
          		sortedRuns.add(srfname); // Store filename to output array
 	    	}
@@ -201,35 +198,29 @@ public class ExternalSort extends Operator {
             System.out.println("ExternalSort: " + io.toString());
             System.exit(1);
         } 
- 		
- 		System.out.printf("ExternalSort: %d sorted runs\n", sortedRuns.size());
- 		
     	return sortedRuns;
     }
     
     
     private String mergeSortedRuns(ArrayList<String> sortedRuns) {
-        // Merge sorted runs. Each iteration of this while loop represent one pass
-        while (sortedRuns.size() > 1) {
-        	System.out.printf("Before merge pass: SortedRuns.size() = %d\n", sortedRuns.size());
-        	
+        // Merge sorted runs. Each iteration of this while loop represent one pass of merging phase
+        while (sortedRuns.size() > 1) {       	
         	ArrayList<String> newSortedRuns = new ArrayList<>();
-        	
         	int i = 0;
+        	ArrayList<String> mergeSet = new ArrayList<>();
         	while (i < sortedRuns.size()) {
-        		        		
         		// Sort B-1 sortedRuns at each pass
-        		ArrayList<String> mergeSet = new ArrayList<>();
-        		while (i < sortedRuns.size() && mergeSet.size() < numBuff - 1) {
-            		mergeSet.add(sortedRuns.get(i++));
-            	}
-        		// |R| writes and |R| reads
-        		String newSortedRun = multiwayMerge(mergeSet);
-        		if (newSortedRun == "") {
-        			System.out.println("ExternalSort: Error in multiway merge");
-        			return "";
+        		mergeSet.add(sortedRuns.get(i++));
+        		if (i == sortedRuns.size() || mergeSet.size() == numBuff-1) {
+            		// |R| writes and |R| reads
+            		String newSortedRun = multiwayMerge(mergeSet);
+            		if (newSortedRun == "") {
+            			System.out.println("ExternalSort: Error in multiway merge");
+            			return "";
+            		}
+            		newSortedRuns.add(newSortedRun);
+            		mergeSet = new ArrayList<>();
         		}
-        		newSortedRuns.add(newSortedRun);
         	}
 
         	assert(newSortedRuns.size() == Math.ceil((double)sortedRuns.size() / (double)(numBuff - 1)));
@@ -240,11 +231,9 @@ public class ExternalSort extends Operator {
         		f.delete();
         	}
         	sortedRuns = newSortedRuns;
-        	System.out.printf("After merge pass: SortedRuns.size() = %d\n", sortedRuns.size());
         }
     	return sortedRuns.get(0);
     }
-    
     
     private String multiwayMerge(ArrayList<String> mergeSet) {
     	ArrayList<ObjectInputStream> scannedRuns = new ArrayList<>();
@@ -265,8 +254,9 @@ public class ExternalSort extends Operator {
     		scannedRuns.add(scannedRun);
     		inbatches.add(null);
     		eos.add(false);
-    		idxs.add(0);
+    		idxs.add(-1);
     	}
+    	
     	
     	// Perform k way merge
     	String srfname = "SRtemp-" + String.valueOf(filenum++);
@@ -277,8 +267,9 @@ public class ExternalSort extends Operator {
          	Batch outbatch = new Batch(batchsize); // initialize output buffer
 	     	while (completedRuns.size() < mergeSet.size()) {
 	     		
+	     		// TODO: Optimize to heap search
 	     		// Linear scan to choose minimum tuple to be added to output page
-	     		Tuple t = null;
+	     		Tuple mintuple = null;
 	     		int minIdx = -1;
 	     		for (int i = 0; i < scannedRuns.size(); i++) {
 	     			// If current sorted run is already at end of stream, continue
@@ -286,36 +277,60 @@ public class ExternalSort extends Operator {
 	     				continue;
 	     				
 	     			// If cursor is at start of page, pull new page in
-	     			} else if (idxs.get(i) == 0) {
+	     			} else if (idxs.get(i) == -1) {
 	     				try {
 	     					inbatches.set(i, (Batch)scannedRuns.get(i).readObject());
+	     					idxs.set(i, 0); // initialize index to 0
 	                    } catch (EOFException e) {
+	                    	System.out.println("Reached end of " + mergeSet.get(i));
 	                        eos.set(i, true); // reached end of last page for i-th run
 	                        completedRuns.add(i); // add i-th run to the set of completed runs
+	                        continue;
+	                    } catch (ClassNotFoundException c) {
+	                        System.out.println("ExternalSort: Error in deserialising temporary file ");
+	                        System.exit(1);
 	                    } 
 	     			}
 	     			
 	     			// get front tuple of current SortedRun's page
 	 				Batch currbatch = inbatches.get(i);
 	 				Tuple currtuple = currbatch.get(idxs.get(i));
+	 				
 	     			// get minimum tuple
 	     			if (minIdx == -1) {
-	     				t = currtuple;
+	     				mintuple = currtuple;
 	     				minIdx = i;
-	     			} else if (currtuple.compareTuples(t, currtuple, attrIndex, attrIndex) <= 0) {
-	     				// keep t if t is smaller than currtuple
+	     			} else if (Tuple.compareTuples(mintuple, currtuple, attrIndex, attrIndex) <= 0) {
+	     				// keep mintuple if mintuple is smaller than currtuple
 	     			} else {
-	     				// keep currtuple if t is larger than currtuple
-	     				t = currtuple;
+	     				// keep currtuple if mintuple is larger than currtuple
+	     				mintuple = currtuple;
 	     				minIdx = i;
 	     			}
 	     		}
 	     		
+	     		// No more tuples. But output page not full yet
+	     		if (minIdx == -1) {
+	     			if (outbatch.size() > 0) {
+	     				try {
+		 					System.out.println("Writing out");
+		 					Debug.PPrint(outbatch);
+			 				out.writeObject(outbatch);
+		 	            } catch (IOException io) {
+		 	                System.out.println("ExternalSort: Error writing to temporary file");
+		 	                return "";
+		 	            }
+	     			}
+	     			continue;	
+	     		}
+	     		
 	     		// Add selected minimum tuple to output page
-	 			outbatch.add(t);
+	 			outbatch.add(mintuple);
 	 			// If output page is full, flush it to file and create a new page
 	 			if (outbatch.isFull()) {
 	 				try {
+	 					// System.out.println("Writing out");
+	 					// Debug.PPrint(outbatch);
 		 				out.writeObject(outbatch);
 	 	            } catch (IOException io) {
 	 	                System.out.println("ExternalSort: Error writing to temporary file");
@@ -328,9 +343,9 @@ public class ExternalSort extends Operator {
 	     		idxs.set(minIdx, idxs.get(minIdx)+1);
 	     		
 	     		// reached end of page for this sortedRun
-	 			// set index to 0 so that it will retrieve the next page in next loop
+	 			// set index to -1 so that it will retrieve the next page in next loop
 	     		if (idxs.get(minIdx) >= inbatches.get(minIdx).size()) { 
-	     			idxs.set(minIdx, 0);
+	     			idxs.set(minIdx, -1);
 	     		}
 	     	}
 	     	
@@ -353,10 +368,7 @@ public class ExternalSort extends Operator {
 	            return "";
 	        }
 	    	
-    	} catch (ClassNotFoundException c) {
-            System.out.println("ExternalSort: Error in deserialising temporary file ");
-            System.exit(1);
-        } catch (IOException io) {
+    	} catch (IOException io) {
             System.out.println("ExternalSort: " + io.getMessage());
             System.exit(1);
         }
