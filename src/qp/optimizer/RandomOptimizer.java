@@ -55,8 +55,21 @@ public class RandomOptimizer {
                     nj.setRight(right);
                     nj.setNumBuff(numbuff);
                     return nj;
-                // TODO: Add case for sortmerge join    
-                //case JoinType.SORTMERGE:
+                
+                // TODO
+                case JoinType.BLOCKNESTED:
+//                    BlockNestedJoin bnj = new BlockNestedJoin((Join) node);
+//                    bnj.setLeft(left);
+//                    bnj.setRight(right);
+//                    bnj.setNumBuff(numbuff);
+//                	return bnj;
+
+                case JoinType.SORTMERGE:
+                    SortMergeJoin smj = new SortMergeJoin((Join) node);
+                    smj.setLeft(left);
+                    smj.setRight(right);
+                    smj.setNumBuff(numbuff);
+                	return smj;
                 	
                 default:
                     return node;

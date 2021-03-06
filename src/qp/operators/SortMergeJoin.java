@@ -20,20 +20,22 @@ public class SortMergeJoin extends Join {
     Batch outbatch;                 // Buffer page for output
     Batch leftbatch;                // Buffer page for left input stream
     Batch rightbatch;               // Buffer page for right input stream
-    ObjectInputStream in;           // File pointer to the right hand materialized file
 
     int lcurs;                      // Cursor for left side buffer
     int rcurs;                      // Cursor for right side buffer
-    boolean eosl;                   // Whether end of stream (left table) is reached
-    boolean eosr;                   // Whether end of stream (right table) is reached
+    boolean eosl;					// Whether end of stream (left table) is reached
+    boolean eosr;					// Whether end of stream (right table) is reached
+    Operator sortedLeft;
+    Operator sortedRight;    
 
-
-
+    
+    
     public SortMergeJoin(Join jn) {
         super(jn.getLeft(), jn.getRight(), jn.getConditionList(), jn.getOpType());
         schema = jn.getSchema();
         jointype = jn.getJoinType();
         numBuff = jn.getNumBuff();
+        Debug.PPrint(this);
     }
 
     public boolean open() {
@@ -42,6 +44,8 @@ public class SortMergeJoin extends Join {
         batchsize = Batch.getPageSize() / tuplesize;
         
         /** find indices attributes of join conditions **/
+        ArrayList<Attribute> leftAttrs = new ArrayList<>();
+        ArrayList<Attribute> rightAttrs = new ArrayList<>();
         leftindex = new ArrayList<>();
         rightindex = new ArrayList<>();
         for (Condition con : conditionList) {
@@ -49,96 +53,85 @@ public class SortMergeJoin extends Join {
             Attribute rightattr = (Attribute) con.getRhs();
             leftindex.add(left.getSchema().indexOf(leftattr));
             rightindex.add(right.getSchema().indexOf(rightattr));
+            leftAttrs.add(leftattr);
+            rightAttrs.add(rightattr);
         }
         
         // External Sort
-        // get filename of sorted left
-        // get filename of sorted right
+        sortedLeft = new ExternalSort(left, leftAttrs, OpType.EXTERNAL_SORT, numBuff);
+        sortedLeft.setSchema(left.getSchema());
         
+        sortedRight = new ExternalSort(right, rightAttrs, OpType.EXTERNAL_SORT, numBuff);
+        sortedRight.setSchema(right.getSchema());
+        
+        if (!(sortedLeft.open() && sortedRight.open())) {
+        	return false;
+        }
+
+        lcurs = 0;
+        rcurs = 0;
+        
+        leftbatch = sortedLeft.next();
+        int j = 0;
+        while (leftbatch != null) {
+        	System.out.printf("%d\n", j++);
+        	Debug.PPrint(leftbatch);
+        	leftbatch = sortedLeft.next();
+        }
+        
+        rightbatch = sortedRight.next();
+        j = 0;
+        while (rightbatch != null) {
+        	System.out.printf("%d\n", j++);
+        	Debug.PPrint(rightbatch);
+        	rightbatch = sortedRight.next();
+        }
+        
+        
+        return true;
     }
 
     public Batch next() {
-
+    	
+    	outbatch = new Batch(batchsize);
+    	//while (!outbatch.isFull()) {
+    		// Fetch new left page
+    		// Fetch new right page
+    		
+    		// Case 1
+    		// lcurs smaller than rcurs | not end of left page
+    		
+    		// Case 2
+    		// lcurs smaller than rcurs | end of left page
+    		
+    		// Case 3
+    		// rcurs smaller than lcurs | not end of right page
+    		
+    		// Case 4
+    		// rcurs smaller than lcurs | end of right page
+    		
+    		// Case 5
+    		// lcurs matches rcurs | not end of right page to end of right page
+    		
+    		// Case 5
+    		// lcurs matches rcurs | end of right page
+    		
+    		    		
+    		
+    		
+    		
+    	//}
+    	
+    	
+    	return outbatch;
     }
 
     public boolean close() {
+    	System.out.println("Close Sort merge join");
+    	sortedLeft.close();
+    	sortedRight.close();
+    	return true;
     }
-    
-    public static String externalSort(Operator in, ArrayList<Integer> attbIndex, int numBuff, int batchSize) {
-   	
-    	// Generate Sorted Runs (array list of ObjectInputStream)
-    	ArrayList<String> sortedRuns = new ArrayList<>();
-        try {
-            int numPages = 0;
-        	filenum++;
-        	String srfname = "SRtemp-" + String.valueOf(filenum); 
-        	ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(srfname));
-        	ArrayList<Tuple> srTuples = new ArrayList<>();
-  
-            Batch inPage;
-            while ((inPage = in.next()) != null || numPages < numBuff) {
-            	for (int i = 0; i < inPage.size(); i++) {
-            		srTuples.add(inPage.get(i));
-            	}
-            	numPages++;
-            	
-            	// All buffer occupied
-            	if (numPages == numBuff || inPage == null) {
-            		// Sort arrayList by attributes
-            		srTuples.sort((t1, t2)-> {
-            			return Tuple.compareTuples(t1, t2, attbIndex, attbIndex);
-            		});
-            		// Write tuples into sorted run page by page
-            		Batch outPage = new Batch(batchSize);
-            		for (int j = 0; j < srTuples.size(); j++) {
-            			outPage.add(srTuples.get(j));
-            			if (outPage.isFull()) {
-            				out.writeObject(outPage);
-            				outPage = new Batch(batchSize);
-            			}
-            		}
-            		out.close();
-            		sortedRuns.add(srfname);
-            		
-            		if (inPage == null) {
-            			break;
-            		}
-            		
-            		// Start a new sorted run
-            		numPages = 0;
-                	filenum++;
-                	srfname = "SRtemp-" + String.valueOf(filenum); 
-                    out = new ObjectOutputStream(new FileOutputStream(srfname));
-                    srTuples = new ArrayList<>();
-            	}
-            }
-        } catch (IOException io) {
-            System.out.println("External Sort: Error");
-            return "";
-        } 
-        
-        
-        // Perform k-way merge of k sorted runs until only 1 sorted run remains
-        while (sortedRuns.size() > 1) {
-        	ArrayList<String> newSortedRuns = new ArrayList<>();
-        	int i = 0;
-        	ArrayList<String> mergeSet = new ArrayList<>();
-        	while (i < sortedRuns.size()) {
-        		// can read up to numBuff - 1 number of runs per merge
-        		mergeSet.add(sortedRuns.get(i));
-        		if (mergeSet.size() == numBuff - 1 || i == sortedRuns.size()-1) {
-        			String newSortedRun = multiwayMerge(mergeSet, numBuff, batchSize);
-        			newSortedRuns.add(newSortedRun);
-        			mergeSet = new ArrayList<>();
-        		}
-        		
-        	}
-        	assert(newSortedRuns.size() == Math.ceil(sortedRuns.size() / (numBuff - 1)));
-        	sortedRuns = newSortedRuns;
-        }
-    	
-    	return sortedRuns.get(0);
-    }
-
 }
+    
 

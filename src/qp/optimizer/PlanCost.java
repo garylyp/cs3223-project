@@ -144,8 +144,10 @@ public class PlanCost {
                 joincost = leftpages * rightpages;
                 break;
             // TODO: Calculate join costs for the other join types
-            case JoinType.SORTMERGE:
+            case JoinType.BLOCKNESTED:
             	joincost = Long.MAX_VALUE;
+            case JoinType.SORTMERGE:
+            	joincost = 0;
             	break;
             default:
                 System.out.println("join type is not supported");
