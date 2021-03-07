@@ -24,6 +24,7 @@ import java.util.HashSet;
  */
 public class ExternalSort extends Operator {
 	
+	static final int DEBUGLEVEL = 0;
 	static int filenum = 0;
 
     Operator base;                 // Base table to project
@@ -129,7 +130,7 @@ public class ExternalSort extends Operator {
 	    } catch (EOFException e) {
 	    	sortedFileEos = true;
 	    } catch (IOException io) {
-            System.out.println("ExternalSort: " + io.getMessage());
+            System.err.println("ExternalSort: " + io.getMessage());
             System.exit(1);
 	    }
 		return null;
@@ -140,8 +141,16 @@ public class ExternalSort extends Operator {
      * * is already reached
      **/
     public boolean close() {
+    	try {
+    		sortedFileBase.close();
+    	} catch (IOException io) {
+            System.err.println("ExternalSort: Error closing file" + io.getMessage());
+            System.exit(1);
+	    }
     	File f = new File(rfname);
-        f.delete();
+        if (!f.delete()) {
+        	System.out.println("Unable to delete sorted relation: " + rfname);
+        }
         return true;
     }
 
@@ -153,8 +162,52 @@ public class ExternalSort extends Operator {
         ExternalSort newExternalSort = new ExternalSort(newbase, newattr, optype, numBuff);
         Schema newSchema = newbase.getSchema().subSchema(newattr);
         newExternalSort.setSchema(newSchema);
+        newExternalSort.rfname = this.rfname;
         return newExternalSort;
     }
+
+	/*
+	 * Get the i-th page from file 
+	 */
+    public Batch getBatch(int idx) {
+    	ObjectInputStream tempSortedFileBase;
+    	boolean tempSortedFileEos;
+        try {
+        	tempSortedFileBase = new ObjectInputStream(new FileInputStream(rfname));
+            tempSortedFileEos = false;
+        } catch (IOException io) {
+            System.err.println("ExternalSort:getBatch: error in reading sorted file" + rfname);
+            return null;
+        }
+
+    	Batch outbatch = new Batch(batchsize);
+    	for (int i = 0; i <= idx; i++) {
+    		try {
+    	    	outbatch = (Batch) tempSortedFileBase.readObject();
+    		} catch (ClassNotFoundException cnf) {
+                System.err.println("ExternalSort:getBatch: Class not found for reading file  " + rfname);
+                System.exit(1);
+    	    } catch (EOFException e) {
+    	    	if (DEBUGLEVEL>=1) System.err.println("ExternalSort:getBatch: EOF reached.");
+    	    	tempSortedFileEos = true;
+    	    } catch (IOException io) {
+                System.err.println("ExternalSort:getBatch: " + io.getMessage());
+                System.exit(1);
+    	    }
+    	}
+        try {
+        	tempSortedFileBase.close();
+        } catch (IOException io) {
+            System.err.println("ExternalSort:getBatch: Error in closing temporary file");
+        }
+        if (tempSortedFileEos) {
+        	return null;
+        } else {
+        	return outbatch;
+        }
+    }
+    
+    
     
     private ArrayList<String> generateSortedRuns(Operator base) {
     	ArrayList<String> sortedRuns = new ArrayList<>();
@@ -185,11 +238,14 @@ public class ExternalSort extends Operator {
          		Batch outbatch = new Batch(batchsize);
          		for (int j = 0; j < srTuples.size(); j++) {
          			outbatch.add(srTuples.get(j));
-         			if (outbatch.isFull()) {
+         			if (outbatch.isFull() && outbatch.size() > 0) {
          				out.writeObject(outbatch);
          				outbatch = new Batch(batchsize);
          			}
          		}
+     			if (outbatch.size()>0) {
+     				out.writeObject(outbatch);
+     			}
          		out.close();
          		sortedRuns.add(srfname); // Store filename to output array
 	    	}
@@ -224,14 +280,9 @@ public class ExternalSort extends Operator {
         	}
 
         	assert(newSortedRuns.size() == Math.ceil((double)sortedRuns.size() / (double)(numBuff - 1)));
-        	
-        	// Delete old files
-        	for (String oldsrfname : sortedRuns) {
-        		File f = new File(oldsrfname);
-        		f.delete();
-        	}
         	sortedRuns = newSortedRuns;
         }
+        
     	return sortedRuns.get(0);
     }
     
@@ -282,7 +333,6 @@ public class ExternalSort extends Operator {
 	     					inbatches.set(i, (Batch)scannedRuns.get(i).readObject());
 	     					idxs.set(i, 0); // initialize index to 0
 	                    } catch (EOFException e) {
-	                    	System.out.println("Reached end of " + mergeSet.get(i));
 	                        eos.set(i, true); // reached end of last page for i-th run
 	                        completedRuns.add(i); // add i-th run to the set of completed runs
 	                        continue;
@@ -309,12 +359,10 @@ public class ExternalSort extends Operator {
 	     			}
 	     		}
 	     		
-	     		// No more tuples. But output page not full yet
+	     		// No more tuples (none selected hence mindIdx = -1). But output page not full yet
 	     		if (minIdx == -1) {
 	     			if (outbatch.size() > 0) {
 	     				try {
-		 					System.out.println("Writing out");
-		 					Debug.PPrint(outbatch);
 			 				out.writeObject(outbatch);
 		 	            } catch (IOException io) {
 		 	                System.out.println("ExternalSort: Error writing to temporary file");
@@ -329,8 +377,6 @@ public class ExternalSort extends Operator {
 	 			// If output page is full, flush it to file and create a new page
 	 			if (outbatch.isFull()) {
 	 				try {
-	 					// System.out.println("Writing out");
-	 					// Debug.PPrint(outbatch);
 		 				out.writeObject(outbatch);
 	 	            } catch (IOException io) {
 	 	                System.out.println("ExternalSort: Error writing to temporary file");
@@ -358,10 +404,14 @@ public class ExternalSort extends Operator {
 	            return "";
 	        }
 	        
-	        // Close old sorted runs file
+	        // Close and delete old sorted runs file
 	        try {
-		    	for (ObjectInputStream runs : scannedRuns) {
-		    		runs.close();
+		    	for (int i = 0; i < mergeSet.size(); i++) {
+		    		scannedRuns.get(i).close();
+		    		File f = new File(mergeSet.get(i));
+		    		if (!f.delete()) {
+		    			System.out.println("Unable to delete sorted run: " + mergeSet.get(i));
+		    		}
 		    	}
 	        } catch (IOException e) {
 	            System.err.println("ExternalSort: Error closing sorted run file");
