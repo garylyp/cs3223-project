@@ -31,3 +31,4 @@ bin/
 # Misc
 .classpath
 .project
+.metadata

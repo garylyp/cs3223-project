@@ -43,11 +43,11 @@ public class RandomOptimizer {
      * * corresponding join operator implementation
      **/
     public static Operator makeExecPlan(Operator node) {
+        int numbuff = BufferManager.getBuffersPerJoin();
         if (node.getOpType() == OpType.JOIN) {
             Operator left = makeExecPlan(((Join) node).getLeft());
             Operator right = makeExecPlan(((Join) node).getRight());
             int joinType = ((Join) node).getJoinType();
-            int numbuff = BufferManager.getBuffersPerJoin();
             switch (joinType) {
                 case JoinType.NESTEDJOIN:
                     NestedJoin nj = new NestedJoin((Join) node);
@@ -82,6 +82,12 @@ public class RandomOptimizer {
             Operator base = makeExecPlan(((Project) node).getBase());
             ((Project) node).setBase(base);
             return node;
+        } else if (node.getOpType() == OpType.DISTINCT) {
+        	Distinct operator = (Distinct) node;
+        	operator.setNumBuff(numbuff);
+        	Operator base = makeExecPlan(operator.getBase());
+        	operator.setBase(base);
+        	return node;
         } else {
             return node;
         }
