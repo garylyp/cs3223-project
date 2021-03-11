@@ -23,7 +23,10 @@
 hs_err_pid*
 
 # testcases
-testcases/
+*.stat
+*.tbl
+*.md
+*.out
 
 # Built Binaries
 bin/
