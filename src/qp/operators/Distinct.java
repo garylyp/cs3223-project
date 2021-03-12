@@ -20,7 +20,7 @@ public class Distinct extends Operator {
     ObjectInputStream in;           // File pointer to the right hand materialized file
 
     private final ArrayList<Attribute> attrset;
-    private ArrayList<Integer> projectIndices = new ArrayList<>(); 
+    private ArrayList<Integer> projectIndices = new ArrayList<>();
     private Operator base; // the base operator
     private ExternalSort sortedBase; // the sort operator being applied on the base operator
     private int batchsize; // Number of tuples per out batch
@@ -49,20 +49,20 @@ public class Distinct extends Operator {
 
     public void setBase(Operator base) {
         this.base = base;
-    }    
-    
+    }
+
     public ArrayList<Attribute> getAttrSet() {
         return attrset;
     }
-    
+
     public void setNumBuff(int num) {
         this.numBuff = num;
     }
-    
+
     public int getNumBuff() {
-    	return this.numBuff;
+        return this.numBuff;
     }
-    
+
     /**
      * During open
      * * Materializes the left hand side of the file
@@ -75,7 +75,12 @@ public class Distinct extends Operator {
         	projectIndices.add(schema.indexOf( (Attribute) attribute));
         }
         sortedBase = new ExternalSort(base, attrset, OpType.DISTINCT, numBuff);
-        return sortedBase.open();
+        sortedBase.setSchema(schema);
+        if (!sortedBase.open()) {
+            System.out.println("External sort failed to open");
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -94,7 +99,7 @@ public class Distinct extends Operator {
         while (!outBatch.isFull()) {
         	
         	// if finished scanning 
-        	if (inBatch == null || inBatch.size() <= 0) {
+        	if (inBatch == null || inBatch.size() <= inIndex) {
         		eos = true;
         		break;
         	}

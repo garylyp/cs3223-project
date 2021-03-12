@@ -83,13 +83,6 @@ public class PlanCost {
         isFeasible = false;
         return 0;
     }
-    /**
-     * Distinct will not change statistics
-     * TODO
-     */
-    protected long getStatistics(Distinct node) {
-    	return calculateCost(node.getBase());
-    }
 
     /**
      * Projection will not change any statistics
@@ -282,15 +275,27 @@ public class PlanCost {
         return numtuples;
     }
 
+    /**
+     * Calculates the cost of a Distinct node
+     */
+    protected long getStatistics(Distinct node) {
+    	return getSort(node.getBase());
+    }
+    
+    protected long getSort(Operator node) {
+    	long numOfInTuples = calculateCost(node);
+    	int inCapacity = Batch.getPageSize() / node.getSchema().getTupleSize();
+    	int numOfInPages = (int) Math.ceil(1.0 * numOfInTuples / inCapacity);
+    	int numOfBuffer = BufferManager.getBuffersPerJoin();
+    	
+    	cost += getExternalSortCost(numOfInPages, numOfBuffer);
+    	return numOfInTuples;
+    }
+    
+    private long getExternalSortCost(long numOfPages, int numOfBuffer) {
+        int numOfSortedRuns = (int) Math.ceil(1.0 * numOfPages / numOfBuffer);
+        int numOfPasses = (int) Math.ceil(Math.log(numOfSortedRuns) / Math.log(numOfBuffer - 1)) + 1;
+        return 2 * numOfPages * numOfPasses;
+    }
+
 }
-
-
-
-
-
-
-
-
-
-
-

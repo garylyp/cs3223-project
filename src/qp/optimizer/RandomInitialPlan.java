@@ -47,11 +47,6 @@ public class RandomInitialPlan {
      * prepare initial plan for the query
      **/
     public Operator prepareInitialPlan() {
-
-    	if (sqlquery.isDistinct()) {
-    		createDistinctOp();
-    	}
-
         if (sqlquery.getGroupByList().size() > 0) {
             System.err.println("GroupBy is not implemented.");
             System.exit(1);
@@ -69,7 +64,9 @@ public class RandomInitialPlan {
             createJoinOp();
         }
         createProjectOp();
-
+        if (sqlquery.isDistinct()) {
+    		createDistinctOp();
+    	}
         return root;
     }
 
@@ -143,9 +140,15 @@ public class RandomInitialPlan {
      * Create Distinct operator
      **/
     public void createDistinctOp() {
-        Operator operator = new Distinct(root, projectlist, OpType.DISTINCT);
-        operator.setSchema(root.getSchema());
-        root = operator;
+    	Operator base = root;
+    	if (projectlist == null) {
+    		projectlist = new ArrayList<Attribute>();
+    	}
+    	if (!projectlist.isEmpty()) {
+    		root = new Distinct(base, projectlist, OpType.DISTINCT);
+    		((Distinct) root).setNumBuff(BufferManager.getBuffersPerJoin());
+    		root.setSchema(base.getSchema());
+    	}
     }
     
     /**

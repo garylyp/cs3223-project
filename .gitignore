@@ -32,3 +32,5 @@ bin/
 .classpath
 .project
 .metadata
+.idea
+*.iml

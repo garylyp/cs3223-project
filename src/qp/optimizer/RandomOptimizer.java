@@ -83,11 +83,10 @@ public class RandomOptimizer {
             ((Project) node).setBase(base);
             return node;
         } else if (node.getOpType() == OpType.DISTINCT) {
-        	Distinct operator = (Distinct) node;
-        	operator.setNumBuff(numbuff);
-        	Operator base = makeExecPlan(operator.getBase());
-        	operator.setBase(base);
-        	return node;
+            ((Distinct) node).setNumBuff(numbuff);
+            Operator base = makeExecPlan(((Distinct) node).getBase());
+            ((Distinct) node).setBase(base);
+            return node;
         } else {
             return node;
         }
@@ -408,6 +407,10 @@ public class RandomOptimizer {
             modifySchema(base);
             ArrayList attrlist = ((Project) node).getProjAttr();
             node.setSchema(base.getSchema().subSchema(attrlist));
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            Operator base = ((Distinct) node).getBase();
+            modifySchema(base);
+            node.setSchema(base.getSchema());
         }
     }
 }
