@@ -1,0 +1,5 @@
+del "*.md"
+del "*.stat"
+del "*.txt"
+del "*.tbl"
+del "*.out"

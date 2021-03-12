@@ -1,0 +1,4 @@
+2
+8
+flno INTEGER 1000 FK 4
+aid INTEGER 1000 FK 4
