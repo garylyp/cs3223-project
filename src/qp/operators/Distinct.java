@@ -6,12 +6,11 @@ package qp.operators;
 
 import qp.utils.Attribute;
 import qp.utils.Batch;
-import qp.utils.Condition;
+import qp.utils.Schema;
 import qp.utils.Tuple;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.Vector;
 
 public class Distinct extends Operator {
 
@@ -19,9 +18,9 @@ public class Distinct extends Operator {
     String rfname;                  // The file name where the right table is materialized
     ObjectInputStream in;           // File pointer to the right hand materialized file
 
-    private final ArrayList<Attribute> attrset;
+    final ArrayList<Attribute> attrset;
     private ArrayList<Integer> projectIndices = new ArrayList<>();
-    private Operator base; // the base operator
+    Operator base; // the base operator
     private ExternalSort sortedBase; // the sort operator being applied on the base operator
     private int batchsize; // Number of tuples per out batch
     private int numBuff; // Number of buffers available
@@ -65,8 +64,7 @@ public class Distinct extends Operator {
 
     /**
      * During open
-     * * Materializes the left hand side of the file
-     * * Opens the connections
+     * * Runs External Sort on base operator
      **/
     public boolean open() {
         int tuplesize = schema.getTupleSize();
@@ -84,8 +82,7 @@ public class Distinct extends Operator {
     }
 
     /**
-     * from input buffers selects the tuples 
-     * * And returns a page of output tuples
+     *
      **/
     public Batch next() {
         if (eos) {
@@ -133,6 +130,17 @@ public class Distinct extends Operator {
     		}
     	}
     	return true;
+    }
+
+    public Object clone() {
+        Operator newbase = (Operator) base.clone();
+        ArrayList<Attribute> newattr = new ArrayList<>();
+        for (int i = 0; i < attrset.size(); ++i)
+            newattr.add((Attribute) attrset.get(i).clone());
+        Distinct newDistinct = new Distinct(newbase, newattr, optype);
+        Schema newSchema = newbase.getSchema().subSchema(newattr);
+        newDistinct.setSchema(newSchema);
+        return newDistinct;
     }
 
 }

@@ -28,7 +28,11 @@ public class QueryMain {
         Batch.setPageSize(getPageSize(args, in));
 
         SQLQuery sqlquery = getSQLQuery(args[0]);
-        configureBufferManager(sqlquery.isDistinct() ? Math.max(sqlquery.getNumJoin(), 1) : sqlquery.getNumJoin(), args, in);
+        int minimumBuffers = 0;
+        if (sqlquery.isDistinct() || !sqlquery.getGroupByList().isEmpty()) {
+            minimumBuffers = 1;
+        }
+        configureBufferManager(Math.max(sqlquery.getNumJoin(), minimumBuffers), args, in);
 
         Operator root = getQueryPlan(sqlquery);
         printFinalPlan(root, args, in);

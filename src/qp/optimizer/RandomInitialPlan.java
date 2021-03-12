@@ -9,6 +9,7 @@ import qp.utils.*;
 
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -47,10 +48,6 @@ public class RandomInitialPlan {
      * prepare initial plan for the query
      **/
     public Operator prepareInitialPlan() {
-        if (sqlquery.getGroupByList().size() > 0) {
-            System.err.println("GroupBy is not implemented.");
-            System.exit(1);
-        }
 
         if (sqlquery.getOrderByList().size() > 0) {
             System.err.println("Orderby is not implemented.");
@@ -62,6 +59,9 @@ public class RandomInitialPlan {
         createSelectOp();
         if (numJoin != 0) {
             createJoinOp();
+        }
+        if (sqlquery.getGroupByList().size() > 0) {
+            createGroupByOp();
         }
         createProjectOp();
         if (sqlquery.isDistinct()) {
@@ -135,21 +135,6 @@ public class RandomInitialPlan {
         if (selectionlist.size() != 0)
             root = op1;
     }
-
-    /**
-     * Create Distinct operator
-     **/
-    public void createDistinctOp() {
-    	Operator base = root;
-    	if (projectlist == null) {
-    		projectlist = new ArrayList<Attribute>();
-    	}
-    	if (!projectlist.isEmpty()) {
-    		root = new Distinct(base, projectlist, OpType.DISTINCT);
-    		((Distinct) root).setNumBuff(BufferManager.getBuffersPerJoin());
-    		root.setSchema(base.getSchema());
-    	}
-    }
     
     /**
      * create join operators
@@ -194,6 +179,21 @@ public class RandomInitialPlan {
             root = jn;
     }
 
+    /**
+     * Create GroupBy operator
+     **/
+    public void createGroupByOp() {
+        Operator base = root;
+        if (groupbylist == null) {
+            groupbylist = new ArrayList<Attribute>();
+        }
+        if (!groupbylist.isEmpty()) {
+            root = new GroupBy(base, groupbylist, OpType.GROUPBY);
+            ((GroupBy) root).setNumBuff(BufferManager.getBuffersPerJoin());
+            root.setSchema(base.getSchema());
+        }
+    }
+
     public void createProjectOp() {
         Operator base = root;
         if (projectlist == null)
@@ -202,6 +202,21 @@ public class RandomInitialPlan {
             root = new Project(base, projectlist, OpType.PROJECT);
             Schema newSchema = base.getSchema().subSchema(projectlist);
             root.setSchema(newSchema);
+        }
+    }
+
+    /**
+     * Create Distinct operator
+     **/
+    public void createDistinctOp() {
+        Operator base = root;
+        if (projectlist == null) {
+            projectlist = new ArrayList<Attribute>();
+        }
+        if (!projectlist.isEmpty()) {
+            root = new Distinct(base, projectlist, OpType.DISTINCT);
+            ((Distinct) root).setNumBuff(BufferManager.getBuffersPerJoin());
+            root.setSchema(base.getSchema());
         }
     }
 

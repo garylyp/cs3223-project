@@ -78,6 +78,8 @@ public class PlanCost {
             return getStatistics((Scan) node);
         } else if (node.getOpType() == OpType.DISTINCT) {
         	return getStatistics((Distinct) node);
+        } else if (node.getOpType() == OpType.GROUPBY) {
+            return getStatistics((GroupBy) node);
         }
         System.out.println("operator is not supported");
         isFeasible = false;
@@ -281,7 +283,14 @@ public class PlanCost {
     protected long getStatistics(Distinct node) {
     	return getSort(node.getBase());
     }
-    
+
+    /**
+     * Calculates the cost of a Groupby node
+     */
+    protected long getStatistics(GroupBy node) {
+        return getSort(node.getBase());
+    }
+
     protected long getSort(Operator node) {
     	long numOfInTuples = calculateCost(node);
     	int inCapacity = Batch.getPageSize() / node.getSchema().getTupleSize();

@@ -21,7 +21,7 @@ public class SQLQuery {
     ArrayList<Attribute> groupbyList;    // List of attibutes in groupby clause
     ArrayList<Attribute> orderbyList;    // List of attibutes in orderby clause
 
-    boolean isDistinct = false;          // Whether distinct key word appeared in select clause
+    boolean isDistinct = false;          // Flag whether distinct key word appeared in select clause
 
     public SQLQuery(ArrayList<Attribute> list1, ArrayList<String> list2, ArrayList<Condition> list3) {
         projectList = list1;

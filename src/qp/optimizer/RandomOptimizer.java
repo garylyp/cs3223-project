@@ -10,6 +10,7 @@ import qp.utils.Condition;
 import qp.utils.RandNumb;
 import qp.utils.SQLQuery;
 
+import java.awt.font.OpenType;
 import java.util.ArrayList;
 
 public class RandomOptimizer {
@@ -77,6 +78,10 @@ public class RandomOptimizer {
         } else if (node.getOpType() == OpType.SELECT) {
             Operator base = makeExecPlan(((Select) node).getBase());
             ((Select) node).setBase(base);
+            return node;
+        } else if (node.getOpType() == OpType.GROUPBY) {
+            Operator base = makeExecPlan(((GroupBy) node).getBase());
+            ((GroupBy) node).setBase(base);
             return node;
         } else if (node.getOpType() == OpType.PROJECT) {
             Operator base = makeExecPlan(((Project) node).getBase());
@@ -383,7 +388,12 @@ public class RandomOptimizer {
             return findNodeAt(((Select) node).getBase(), joinNum);
         } else if (node.getOpType() == OpType.PROJECT) {
             return findNodeAt(((Project) node).getBase(), joinNum);
-        } else {
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            return findNodeAt(((Distinct) node).getBase(), joinNum);
+        }else if (node.getOpType() == OpType.GROUPBY) {
+            return findNodeAt(((GroupBy) node).getBase(), joinNum);
+        }
+        else {
             return null;
         }
     }
@@ -400,6 +410,10 @@ public class RandomOptimizer {
             node.setSchema(left.getSchema().joinWith(right.getSchema()));
         } else if (node.getOpType() == OpType.SELECT) {
             Operator base = ((Select) node).getBase();
+            modifySchema(base);
+            node.setSchema(base.getSchema());
+        } else if (node.getOpType() == OpType.GROUPBY) {
+            Operator base = ((GroupBy) node).getBase();
             modifySchema(base);
             node.setSchema(base.getSchema());
         } else if (node.getOpType() == OpType.PROJECT) {
