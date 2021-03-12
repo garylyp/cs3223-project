@@ -1,5 +1,5 @@
 /**
- * Block nested loop algorithm
+ * Block nested join algorithm
  */
 
 package qp.operators;
