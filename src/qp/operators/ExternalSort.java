@@ -29,11 +29,12 @@ public class ExternalSort extends Operator {
 
     Operator base;                 // Base table to project
     ArrayList<Attribute> attrset;  // Set of attributes to project
-    ArrayList<Integer> attrIndex;    // index of the attributes in the base operator
-    int numBuff;					 // Number of buffers available
+    ArrayList<Integer> attrIndex;  // index of the attributes in the base operator
+    int numBuff;                   // Number of buffers available
     int batchsize;                 // Number of tuples per outbatch
-    String rfname;				   // Name of temp storage file
+    String rfname;                 // Name of temp storage file
     File sortedFile;
+    boolean isDesc;                // Sort order (default is false, i.e. ascending) 
     
     ObjectInputStream sortedFileBase;
     boolean sortedFileEos;
@@ -46,6 +47,7 @@ public class ExternalSort extends Operator {
         this.base = base;
         this.attrset = as;
         this.numBuff = numBuff;
+        this.isDesc = false;
     }
     
     public Operator getBase() {
@@ -62,6 +64,14 @@ public class ExternalSort extends Operator {
     
     public int getNumBuff() {
     	return this.numBuff;
+    }
+    
+    public boolean getIsDesc() {
+        return isDesc;
+    }
+
+    public void setIsDesc(boolean isDesc) {
+        this.isDesc = isDesc;
     }
 
     /**
@@ -231,7 +241,8 @@ public class ExternalSort extends Operator {
 	         	
 	     		// In-memory sort tuples by attributes
 	     		srTuples.sort((t1, t2)-> {
-	     			return Tuple.compareTuples(t1, t2, attrIndex, attrIndex);
+	     			return isDesc ? -Tuple.compareTuples(t1, t2, attrIndex, attrIndex)
+	     				          : Tuple.compareTuples(t1, t2, attrIndex, attrIndex);
 	     		});
 	     		
          		// Write tuples into output file page by page to form a sorted run
