@@ -89,6 +89,11 @@ STRING_LITERAL=\"{CHAR}*\"
   yybegin(YYINITIAL);
   return new Symbol(sym.DISTINCT,yyline,yychar,new TokenValue(yytext()));
 }
+
+<YYINITIAL,NEGATE> DESC {
+  yybegin(YYINITIAL);
+  return new Symbol(sym.DESC,yyline,yychar,new TokenValue(yytext()));
+}
    
 <YYINITIAL,NEGATE> "*" {
     yybegin(YYINITIAL);
@@ -157,12 +162,6 @@ STRING_LITERAL=\"{CHAR}*\"
   yybegin(YYINITIAL);
   return new Symbol(sym.DOT,yyline,yychar,new TokenValue(yytext()));
 }
-
-<YYINITIAL,NEGATE> DESC {
-  yybegin(YYINITIAL);
-  return new Symbol(sym.DESC,yyline,yychar,new TokenValue(yytext()));
-}
-
 
 
 

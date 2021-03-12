@@ -358,16 +358,32 @@ public class ExternalSort extends Operator {
 	 				Tuple currtuple = currbatch.get(idxs.get(i));
 	 				
 	     			// get minimum tuple
-	     			if (minIdx == -1) {
+	 				if (minIdx == -1) {
 	     				mintuple = currtuple;
 	     				minIdx = i;
-	     			} else if (Tuple.compareTuples(mintuple, currtuple, attrIndex, attrIndex) <= 0) {
-	     				// keep mintuple if mintuple is smaller than currtuple
-	     			} else {
-	     				// keep currtuple if mintuple is larger than currtuple
-	     				mintuple = currtuple;
-	     				minIdx = i;
-	     			}
+	     				
+	     			// Ascending order
+	 				} else if (!isDesc) {
+		     			if (Tuple.compareTuples(mintuple, currtuple, attrIndex, attrIndex) <= 0) {
+		     				// keep mintuple if mintuple < currtuple
+		     			} else {
+		     				// keep currtuple if mintuple > currtuple
+		     				mintuple = currtuple;
+		     				minIdx = i;
+		     			}
+		     		
+		     		// Descending order
+		     		// supposed to be maxtuple but reused mintuple here
+	 				} else {
+		     			if (Tuple.compareTuples(mintuple, currtuple, attrIndex, attrIndex) >= 0) {
+		     				// keep mintuple if mintuple > currtuple
+		     			} else {
+		     				// keep currtuple if mintuple < currtuple
+		     				mintuple = currtuple;
+		     				minIdx = i;
+		     			}
+	 				}
+
 	     		}
 	     		
 	     		// No more tuples (none selected hence mindIdx = -1). But output page not full yet
