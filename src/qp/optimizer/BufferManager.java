@@ -20,5 +20,4 @@ public class BufferManager {
     public static int getBuffersPerJoin() {
         return buffPerJoin;
     }
-
 }
