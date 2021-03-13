@@ -29,11 +29,12 @@ public class ExternalSort extends Operator {
 
     Operator base;                 // Base table to project
     ArrayList<Attribute> attrset;  // Set of attributes to project
-    ArrayList<Integer> attrIndex;    // index of the attributes in the base operator
-    int numBuff;					 // Number of buffers available
+    ArrayList<Integer> attrIndex;  // index of the attributes in the base operator
+    int numBuff;                   // Number of buffers available
     int batchsize;                 // Number of tuples per outbatch
-    String rfname;				   // Name of temp storage file
+    String rfname;                 // Name of temp storage file
     File sortedFile;
+    boolean isDesc;                // Sort order (default is false, i.e. ascending) 
     
     ObjectInputStream sortedFileBase;
     boolean sortedFileEos;
@@ -46,6 +47,7 @@ public class ExternalSort extends Operator {
         this.base = base;
         this.attrset = as;
         this.numBuff = numBuff;
+        this.isDesc = false;
     }
     
     public Operator getBase() {
@@ -63,6 +65,14 @@ public class ExternalSort extends Operator {
     public int getNumBuff() {
     	return this.numBuff;
     }
+    
+    public boolean getIsDesc() {
+        return isDesc;
+    }
+
+    public void setIsDesc(boolean isDesc) {
+        this.isDesc = isDesc;
+    }
 
     /**
      * Opens the connection to the base operator
@@ -75,6 +85,11 @@ public class ExternalSort extends Operator {
         batchsize = Batch.getPageSize() / tuplesize;
 
         if (!base.open()) return false;
+        
+        if (numBuff < 3) {
+            System.out.println("Minimum 3 buffers are required for external sort operation ");
+            System.exit(1);
+        }
 
         /** The following loop finds the index of the columns that
          ** are required from the base operator
@@ -231,7 +246,8 @@ public class ExternalSort extends Operator {
 	         	
 	     		// In-memory sort tuples by attributes
 	     		srTuples.sort((t1, t2)-> {
-	     			return Tuple.compareTuples(t1, t2, attrIndex, attrIndex);
+	     			return isDesc ? -Tuple.compareTuples(t1, t2, attrIndex, attrIndex)
+	     				          : Tuple.compareTuples(t1, t2, attrIndex, attrIndex);
 	     		});
 	     		
          		// Write tuples into output file page by page to form a sorted run
@@ -347,16 +363,32 @@ public class ExternalSort extends Operator {
 	 				Tuple currtuple = currbatch.get(idxs.get(i));
 	 				
 	     			// get minimum tuple
-	     			if (minIdx == -1) {
+	 				if (minIdx == -1) {
 	     				mintuple = currtuple;
 	     				minIdx = i;
-	     			} else if (Tuple.compareTuples(mintuple, currtuple, attrIndex, attrIndex) <= 0) {
-	     				// keep mintuple if mintuple is smaller than currtuple
-	     			} else {
-	     				// keep currtuple if mintuple is larger than currtuple
-	     				mintuple = currtuple;
-	     				minIdx = i;
-	     			}
+	     				
+	     			// Ascending order
+	 				} else if (!isDesc) {
+		     			if (Tuple.compareTuples(mintuple, currtuple, attrIndex, attrIndex) <= 0) {
+		     				// keep mintuple if mintuple < currtuple
+		     			} else {
+		     				// keep currtuple if mintuple > currtuple
+		     				mintuple = currtuple;
+		     				minIdx = i;
+		     			}
+		     		
+		     		// Descending order
+		     		// supposed to be maxtuple but reused mintuple here
+	 				} else {
+		     			if (Tuple.compareTuples(mintuple, currtuple, attrIndex, attrIndex) >= 0) {
+		     				// keep mintuple if mintuple > currtuple
+		     			} else {
+		     				// keep currtuple if mintuple < currtuple
+		     				mintuple = currtuple;
+		     				minIdx = i;
+		     			}
+	 				}
+
 	     		}
 	     		
 	     		// No more tuples (none selected hence mindIdx = -1). But output page not full yet

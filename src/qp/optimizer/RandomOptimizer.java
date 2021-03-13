@@ -82,6 +82,13 @@ public class RandomOptimizer {
             Operator base = makeExecPlan(((Project) node).getBase());
             ((Project) node).setBase(base);
             return node;
+        } else if (node.getOpType() == OpType.ORDER) {
+        	Operator base = makeExecPlan(((Order) node).getBase());
+        	// If no buffer assigned, assign a minimum of 3
+        	int numbuff = Math.max(3, BufferManager.getBuffersPerJoin()); 
+        	((Order) node).setNumBuff(numbuff);
+            ((Order) node).setBase(base);
+            return node;
         } else {
             return node;
         }
@@ -378,6 +385,8 @@ public class RandomOptimizer {
             return findNodeAt(((Select) node).getBase(), joinNum);
         } else if (node.getOpType() == OpType.PROJECT) {
             return findNodeAt(((Project) node).getBase(), joinNum);
+        } else if (node.getOpType() == OpType.ORDER) {
+            return findNodeAt(((Order) node).getBase(), joinNum);
         } else {
             return null;
         }
@@ -402,6 +411,10 @@ public class RandomOptimizer {
             modifySchema(base);
             ArrayList attrlist = ((Project) node).getProjAttr();
             node.setSchema(base.getSchema().subSchema(attrlist));
+        } else if (node.getOpType() == OpType.ORDER) {
+            Operator base = ((Order) node).getBase();
+            modifySchema(base);
+            node.setSchema(base.getSchema());
         }
     }
 }
