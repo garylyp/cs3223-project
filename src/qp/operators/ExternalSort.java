@@ -85,6 +85,11 @@ public class ExternalSort extends Operator {
         batchsize = Batch.getPageSize() / tuplesize;
 
         if (!base.open()) return false;
+        
+        if (numBuff < 3) {
+            System.out.println("Minimum 3 buffers are required for external sort operation ");
+            System.exit(1);
+        }
 
         /** The following loop finds the index of the columns that
          ** are required from the base operator
