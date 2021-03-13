@@ -145,7 +145,7 @@ public class BlockNestedJoin extends Join {
                 if (leftBuffers[i + 1] == null) {
                     break;
                 }
-                leftTupleCount = leftBuffers[i].size() + leftTupleCount;
+                leftTupleCount = leftBuffers[i + 1].size() + leftTupleCount;
             }
 
             while (eosr == false) {
