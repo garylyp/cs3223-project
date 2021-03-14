@@ -119,15 +119,15 @@ public class Debug {
         	System.out.print("Distinct(");
         	PPrint(((Distinct) node).getBase());
         	System.out.print(")");
-        } else if (optype == OpType.GROUPBY) {
-            System.out.print("GroupBy(");
-            PPrint(((GroupBy) node).getBase());
-            System.out.print(")");
         } else if (optype == OpType.ORDER) {
         	System.out.print("Order");
         	System.out.print(((Order) node).getIsDesc() ? "DESC" : "ASC");
         	System.out.print("(");
             PPrint(((Order) node).getBase());
+            System.out.print(")");
+        } else if (optype == OpType.GROUPBY) {
+            System.out.print("GroupBy(");
+            PPrint(((GroupBy) node).getBase());
             System.out.print(")");
         }
     }

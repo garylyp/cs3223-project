@@ -61,11 +61,9 @@ public class RandomInitialPlan {
         if (sqlquery.getGroupByList().size() > 0) {
             createGroupByOp();
         }
-
         if (sqlquery.getOrderByList().size() > 0) {
             createOrderByOp();
         }
-
         createProjectOp();
         if (sqlquery.isDistinct()) {
     		createDistinctOp();
@@ -182,14 +180,14 @@ public class RandomInitialPlan {
             root = jn;
     }
 
-    public void createOrderByOp() {
+    public void createProjectOp() {
         Operator base = root;
-        if (orderbylist == null)
-        	orderbylist = new ArrayList<Attribute>();
-        if (!orderbylist.isEmpty()) {
-        	root = new Order(base, orderbylist, OpType.ORDER, sqlquery.isDesc());
-            Schema schema = base.getSchema();
-            root.setSchema(schema);
+        if (projectlist == null)
+            projectlist = new ArrayList<Attribute>();
+        if (!projectlist.isEmpty()) {
+            root = new Project(base, projectlist, OpType.PROJECT);
+            Schema newSchema = base.getSchema().subSchema(projectlist);
+            root.setSchema(newSchema);
         }
     }
 
@@ -208,14 +206,14 @@ public class RandomInitialPlan {
         }
     }
 
-    public void createProjectOp() {
+    public void createOrderByOp() {
         Operator base = root;
-        if (projectlist == null)
-            projectlist = new ArrayList<Attribute>();
-        if (!projectlist.isEmpty()) {
-            root = new Project(base, projectlist, OpType.PROJECT);
-            Schema newSchema = base.getSchema().subSchema(projectlist);
-            root.setSchema(newSchema);
+        if (orderbylist == null)
+            orderbylist = new ArrayList<Attribute>();
+        if (!orderbylist.isEmpty()) {
+            root = new Order(base, orderbylist, OpType.ORDER, sqlquery.isDesc());
+            Schema schema = base.getSchema();
+            root.setSchema(schema);
         }
     }
 

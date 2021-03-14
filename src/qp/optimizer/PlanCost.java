@@ -304,12 +304,12 @@ public class PlanCost {
     }
 
     protected long getSort(Operator node) {
-        long numtuples = calculateCost(node.getBase());
+        long numtuples = calculateCost(node);
         Schema schema = node.getSchema();
         long tuplesize = schema.getTupleSize();
         long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
         long numpages = (long) Math.ceil((double) numtuples / (double) pagesize);
-        long numBuff = node.getNumBuff();
+        int numBuff = BufferManager.getBuffersPerJoin();
         long externalSortCost = getExternalSortCost(numpages, numBuff);
 
         cost = cost + externalSortCost;

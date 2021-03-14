@@ -9,20 +9,15 @@ import java.io.ObjectInputStream;
 import java.util.ArrayList;
 
 public class GroupBy extends Operator {
+    Operator base;                              // the base operator
+    private ArrayList<Attribute> groupbyList;   // Set of attributes to group by
+    private int batchsize;                      // Number of tuples per out batch
+    private int numBuff;                        // Number of buffers available
+    private boolean eos = false;                // records whether we have reached end of stream
 
-    static int filenum = 0;         // To get unique filenum for this operation
-    String rfname;                  // The file name where the right table is materialized
-    ObjectInputStream in;           // File pointer to the right hand materialized file
+    private ArrayList<Integer> projectIndices = new ArrayList<>();  // Set of index of the attributes in the base operator that are to be projected
+    private ExternalSort sortedBase;            // the sort operator being applied on the base operator
 
-    private ArrayList<Attribute> groupbyList = new ArrayList<>();
-    private ArrayList<Integer> projectIndices = new ArrayList<>();
-    Operator base; // the base operator
-    private ExternalSort sortedBase; // the sort operator being applied on the base operator
-    private int batchsize; // Number of tuples per out batch
-    private int numBuff; // Number of buffers available
-    private boolean eos = false; // records whether we have reached end of stream
-    private Batch inBatch = null; // input batch
-    private int inIndex = 0; // the index for the current element being read from input batch
     public Operator getBase() {
         return base;
     }
@@ -69,9 +64,12 @@ public class GroupBy extends Operator {
     }
 
     /**
-     *
-     **/
+     * Read next tuple from operator
+     */
     public Batch next() {
+        Batch inBatch = null; // input batch
+        int inIndex = 0; // the index for the current element being read from input batch
+
         if (eos) {
             close();
             return null;
@@ -102,6 +100,13 @@ public class GroupBy extends Operator {
         return outBatch;
     }
 
+    /**
+     * Close the operator
+     */
+    public boolean close() {
+        return sortedBase.close();
+    }
+
     public Object clone() {
         Operator newbase = (Operator) base.clone();
         ArrayList<Attribute> newattr = new ArrayList<>();
@@ -110,6 +115,7 @@ public class GroupBy extends Operator {
         GroupBy newGroupBy = new GroupBy(newbase, newattr, optype);
         Schema newSchema = newbase.getSchema().subSchema(newattr);
         newGroupBy.setSchema(newSchema);
+        newGroupBy.setNumBuff(numBuff);
         return newGroupBy;
     }
 }
