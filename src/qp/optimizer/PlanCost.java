@@ -80,6 +80,8 @@ public class PlanCost {
         	return getStatistics((Distinct) node);
         } else if (node.getOpType() == OpType.GROUPBY) {
             return getStatistics((GroupBy) node);
+        } else if (node.getOpType() == OpType.ORDER) {
+            return getStatistics((Order) node);
         }
         System.out.println("operator is not supported");
         isFeasible = false;
@@ -147,11 +149,16 @@ public class PlanCost {
             case JoinType.NESTEDJOIN:
                 joincost = leftpages * rightpages;
                 break;
-            // TODO: Calculate join costs for the other join types
             case JoinType.BLOCKNESTED:
-            	joincost = Long.MAX_VALUE;
+                long blocksize = numbuff - 2;
+                int leftBlockCount = (int) Math.ceil(leftpages / blocksize);
+                // cost of join = (no. of outer blocks) * scan of inner block
+                joincost = leftBlockCount * rightpages;
+                break;
             case JoinType.SORTMERGE:
-            	joincost = 0;
+            	long leftSortCost = getExternalSortCost(leftpages, node.getNumBuff());
+            	long rightSortCost = getExternalSortCost(rightpages, node.getNumBuff());
+            	joincost = leftSortCost + rightSortCost + leftpages + rightpages; // assuming one match per tuple
             	break;
             default:
                 System.out.println("join type is not supported");
@@ -277,6 +284,11 @@ public class PlanCost {
         return numtuples;
     }
 
+
+    protected long getStatistics(Order node) {
+        return getSort(node.getBase());
+    }
+
     /**
      * Calculates the cost of a Distinct node
      */
@@ -292,19 +304,22 @@ public class PlanCost {
     }
 
     protected long getSort(Operator node) {
-    	long numOfInTuples = calculateCost(node);
-    	int inCapacity = Batch.getPageSize() / node.getSchema().getTupleSize();
-    	int numOfInPages = (int) Math.ceil(1.0 * numOfInTuples / inCapacity);
-    	int numOfBuffer = BufferManager.getBuffersPerJoin();
-    	
-    	cost += getExternalSortCost(numOfInPages, numOfBuffer);
-    	return numOfInTuples;
-    }
-    
-    private long getExternalSortCost(long numOfPages, int numOfBuffer) {
-        int numOfSortedRuns = (int) Math.ceil(1.0 * numOfPages / numOfBuffer);
-        int numOfPasses = (int) Math.ceil(Math.log(numOfSortedRuns) / Math.log(numOfBuffer - 1)) + 1;
-        return 2 * numOfPages * numOfPasses;
+        long numtuples = calculateCost(node.getBase());
+        Schema schema = node.getSchema();
+        long tuplesize = schema.getTupleSize();
+        long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
+        long numpages = (long) Math.ceil((double) numtuples / (double) pagesize);
+        long numBuff = node.getNumBuff();
+        long externalSortCost = getExternalSortCost(numpages, numBuff);
+
+        cost = cost + externalSortCost;
+        return numtuples;
     }
 
+    private long getExternalSortCost(long numPages, long numBuff) {
+        double numSortedRuns = Math.ceil((double) numPages / (double) numBuff);
+        long numMergePass = (long) Math.ceil(Math.log(numSortedRuns) / Math.log(numBuff - 1));
+        long cost = 2 * numPages * (1+numMergePass);
+        return cost;
+    }
 }

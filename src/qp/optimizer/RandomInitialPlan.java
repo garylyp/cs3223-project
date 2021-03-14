@@ -9,7 +9,6 @@ import qp.utils.*;
 
 import java.io.FileInputStream;
 import java.io.ObjectInputStream;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -23,6 +22,7 @@ public class RandomInitialPlan {
     ArrayList<Condition> selectionlist;   // List of select conditons
     ArrayList<Condition> joinlist;        // List of join conditions
     ArrayList<Attribute> groupbylist;
+    ArrayList<Attribute> orderbylist;
     int numJoin;            // Number of joins in this query
     HashMap<String, Operator> tab_op_hash;  // Table name to the Operator
     Operator root;          // Root of the query plan tree
@@ -34,6 +34,7 @@ public class RandomInitialPlan {
         selectionlist = sqlquery.getSelectionList();
         joinlist = sqlquery.getJoinList();
         groupbylist = sqlquery.getGroupByList();
+        orderbylist = sqlquery.getOrderByList();
         numJoin = joinlist.size();
     }
 
@@ -49,10 +50,7 @@ public class RandomInitialPlan {
      **/
     public Operator prepareInitialPlan() {
 
-        if (sqlquery.getOrderByList().size() > 0) {
-            System.err.println("Orderby is not implemented.");
-            System.exit(1);
-        }
+
 
         tab_op_hash = new HashMap<>();
         createScanOp();
@@ -63,6 +61,11 @@ public class RandomInitialPlan {
         if (sqlquery.getGroupByList().size() > 0) {
             createGroupByOp();
         }
+
+        if (sqlquery.getOrderByList().size() > 0) {
+            createOrderByOp();
+        }
+
         createProjectOp();
         if (sqlquery.isDistinct()) {
     		createDistinctOp();
@@ -135,7 +138,7 @@ public class RandomInitialPlan {
         if (selectionlist.size() != 0)
             root = op1;
     }
-    
+
     /**
      * create join operators
      **/
@@ -165,7 +168,7 @@ public class RandomInitialPlan {
             /** randomly select a join type**/
             int numJMeth = JoinType.numJoinTypes();
             // int joinMeth = RandNumb.randInt(0, numJMeth - 1);
-            int joinMeth = JoinType.SORTMERGE;
+            int joinMeth = JoinType.BLOCKNESTED;
             jn.setJoinType(joinMeth);
             modifyHashtable(left, jn);
             modifyHashtable(right, jn);
@@ -177,6 +180,17 @@ public class RandomInitialPlan {
          **/
         if (numJoin != 0)
             root = jn;
+    }
+
+    public void createOrderByOp() {
+        Operator base = root;
+        if (orderbylist == null)
+        	orderbylist = new ArrayList<Attribute>();
+        if (!orderbylist.isEmpty()) {
+        	root = new Order(base, orderbylist, OpType.ORDER, sqlquery.isDesc());
+            Schema schema = base.getSchema();
+            root.setSchema(schema);
+        }
     }
 
     /**

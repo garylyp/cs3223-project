@@ -21,7 +21,8 @@ public class SQLQuery {
     ArrayList<Attribute> groupbyList;    // List of attibutes in groupby clause
     ArrayList<Attribute> orderbyList;    // List of attibutes in orderby clause
 
-    boolean isDistinct = false;          // Flag whether distinct key word appeared in select clause
+    boolean isDistinct = false;          // Whether distinct key word appeared in select clause
+    boolean isDesc = false;				 // NEW: Whether order of results must be in descending order
 
     public SQLQuery(ArrayList<Attribute> list1, ArrayList<String> list2, ArrayList<Condition> list3) {
         projectList = list1;
@@ -66,6 +67,14 @@ public class SQLQuery {
                 }
             }
         }
+    }
+
+    public void setIsDesc(boolean flag) {
+        isDesc = flag;
+    }
+
+    public boolean isDesc() {
+        return isDesc;
     }
 
     public void setIsDistinct(boolean flag) {

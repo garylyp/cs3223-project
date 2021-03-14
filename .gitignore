@@ -27,6 +27,7 @@ hs_err_pid*
 *.tbl
 *.md
 *.out
+*.txt
 
 # Built Binaries
 bin/
