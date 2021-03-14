@@ -76,12 +76,12 @@ public class PlanCost {
             return getStatistics((Project) node);
         } else if (node.getOpType() == OpType.SCAN) {
             return getStatistics((Scan) node);
-        } else if (node.getOpType() == OpType.DISTINCT) {
-        	return getStatistics((Distinct) node);
-        } else if (node.getOpType() == OpType.GROUPBY) {
+        }  else if (node.getOpType() == OpType.GROUPBY) {
             return getStatistics((GroupBy) node);
         } else if (node.getOpType() == OpType.ORDER) {
             return getStatistics((Order) node);
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            return getStatistics((Distinct) node);
         }
         System.out.println("operator is not supported");
         isFeasible = false;
@@ -284,8 +284,17 @@ public class PlanCost {
         return numtuples;
     }
 
-
+    /**
+     * Calculates the cost of a Order node
+     */
     protected long getStatistics(Order node) {
+        return getSort(node.getBase());
+    }
+
+    /**
+     * Calculates the cost of a Groupby node
+     */
+    protected long getStatistics(GroupBy node) {
         return getSort(node.getBase());
     }
 
@@ -296,12 +305,6 @@ public class PlanCost {
     	return getSort(node.getBase());
     }
 
-    /**
-     * Calculates the cost of a Groupby node
-     */
-    protected long getStatistics(GroupBy node) {
-        return getSort(node.getBase());
-    }
 
     protected long getSort(Operator node) {
         long numtuples = calculateCost(node);
