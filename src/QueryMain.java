@@ -28,11 +28,8 @@ public class QueryMain {
         Batch.setPageSize(getPageSize(args, in));
 
         SQLQuery sqlquery = getSQLQuery(args[0]);
-        int minimumBuffers = 0;
-        if (sqlquery.isDistinct() || !sqlquery.getGroupByList().isEmpty()) {
-            minimumBuffers = 1;
-        }
-        configureBufferManager(Math.max(sqlquery.getNumJoin(), minimumBuffers), args, in);
+        boolean hasExtJoin = sqlquery.isDistinct() || !sqlquery.getGroupByList().isEmpty();
+        configureBufferManager(sqlquery.getNumJoin(), hasExtJoin, args, in);
 
         Operator root = getQueryPlan(sqlquery);
         printFinalPlan(root, args, in);
@@ -90,8 +87,8 @@ public class QueryMain {
      * If there are joins then assigns buffers to each join operator while preparing the plan.
      * As buffer manager is not implemented, just input the number of buffers available.
      **/
-    private static void configureBufferManager(int numJoin, String[] args, BufferedReader in) {
-        if (numJoin != 0) {
+    private static void configureBufferManager(int numJoin, boolean hasExtJoin, String[] args, BufferedReader in) {
+        if (numJoin != 0 || hasExtJoin) {
             int numBuff = 1000;
             if (args.length < 4) {
                 System.out.println("enter the number of buffers available");
@@ -101,7 +98,24 @@ public class QueryMain {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-            } else numBuff = Integer.parseInt(args[3]);
+            } else {
+                numBuff = Integer.parseInt(args[3]);
+            }
+            if (hasExtJoin) {
+                while (numBuff < 3) {
+                    System.out.println("Minimum buffers for external join for DISTINCT and GROUPBY is 3. Enter number of buffers available");
+                    try {
+                        String temp = in.readLine();
+                        numBuff = Integer.parseInt(temp);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            if (hasExtJoin) {
+                numJoin = Math.max(numJoin, 1);
+            }
+            System.out.println(numBuff + ", " + numJoin);
             BufferManager bm = new BufferManager(numBuff, numJoin);
         }
 

@@ -93,6 +93,7 @@ public class Distinct extends Operator {
         } 
         
         Batch outBatch = new Batch(batchsize);
+        lastOutTuple = null;
         while (!outBatch.isFull()) {
         	
         	// if finished scanning 
