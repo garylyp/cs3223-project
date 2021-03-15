@@ -68,7 +68,7 @@ public class SQLQuery {
             }
         }
     }
-    
+
     public void setIsDesc(boolean flag) {
         isDesc = flag;
     }

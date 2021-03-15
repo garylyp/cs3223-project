@@ -35,3 +35,6 @@ bin/
 # Misc
 .classpath
 .project
+.metadata
+.idea
+*.iml

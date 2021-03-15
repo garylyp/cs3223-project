@@ -50,15 +50,7 @@ public class RandomInitialPlan {
      **/
     public Operator prepareInitialPlan() {
 
-        if (sqlquery.isDistinct()) {
-            System.err.println("Distinct is not implemented.");
-            System.exit(1);
-        }
 
-        if (sqlquery.getGroupByList().size() > 0) {
-            System.err.println("GroupBy is not implemented.");
-            System.exit(1);
-        }
 
         tab_op_hash = new HashMap<>();
         createScanOp();
@@ -66,14 +58,16 @@ public class RandomInitialPlan {
         if (numJoin != 0) {
             createJoinOp();
         }
-        
+        if (sqlquery.getGroupByList().size() > 0) {
+            createGroupByOp();
+        }
         if (sqlquery.getOrderByList().size() > 0) {
             createOrderByOp();
         }
-        
         createProjectOp();
-
-
+        if (sqlquery.isDistinct()) {
+    		createDistinctOp();
+    	}
         return root;
     }
 
@@ -185,17 +179,6 @@ public class RandomInitialPlan {
         if (numJoin != 0)
             root = jn;
     }
-    
-    public void createOrderByOp() {
-        Operator base = root;
-        if (orderbylist == null)
-        	orderbylist = new ArrayList<Attribute>();
-        if (!orderbylist.isEmpty()) {
-        	root = new Order(base, orderbylist, OpType.ORDER, sqlquery.isDesc());
-            Schema schema = base.getSchema();
-            root.setSchema(schema);
-        }
-    }
 
     public void createProjectOp() {
         Operator base = root;
@@ -205,6 +188,47 @@ public class RandomInitialPlan {
             root = new Project(base, projectlist, OpType.PROJECT);
             Schema newSchema = base.getSchema().subSchema(projectlist);
             root.setSchema(newSchema);
+        }
+    }
+
+    /**
+     * Create GroupBy operator
+     **/
+    public void createGroupByOp() {
+        Operator base = root;
+        if (groupbylist == null) {
+            groupbylist = new ArrayList<Attribute>();
+        }
+        if (!groupbylist.isEmpty()) {
+            root = new GroupBy(base, groupbylist, OpType.GROUPBY);
+            ((GroupBy) root).setNumBuff(BufferManager.getBuffersPerJoin());
+            root.setSchema(base.getSchema());
+        }
+    }
+
+    public void createOrderByOp() {
+        Operator base = root;
+        if (orderbylist == null)
+            orderbylist = new ArrayList<Attribute>();
+        if (!orderbylist.isEmpty()) {
+            root = new Order(base, orderbylist, OpType.ORDER, sqlquery.isDesc());
+            Schema schema = base.getSchema();
+            root.setSchema(schema);
+        }
+    }
+
+    /**
+     * Create Distinct operator
+     **/
+    public void createDistinctOp() {
+        Operator base = root;
+        if (projectlist == null) {
+            projectlist = new ArrayList<Attribute>();
+        }
+        if (!projectlist.isEmpty()) {
+            root = new Distinct(base, projectlist, OpType.DISTINCT);
+            ((Distinct) root).setNumBuff(BufferManager.getBuffersPerJoin());
+            root.setSchema(base.getSchema());
         }
     }
 

@@ -76,8 +76,12 @@ public class PlanCost {
             return getStatistics((Project) node);
         } else if (node.getOpType() == OpType.SCAN) {
             return getStatistics((Scan) node);
+        }  else if (node.getOpType() == OpType.GROUPBY) {
+            return getStatistics((GroupBy) node);
         } else if (node.getOpType() == OpType.ORDER) {
             return getStatistics((Order) node);
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            return getStatistics((Distinct) node);
         }
         System.out.println("operator is not supported");
         isFeasible = false;
@@ -279,37 +283,46 @@ public class PlanCost {
         }
         return numtuples;
     }
-    
-    
+
+    /**
+     * Calculates the cost of a Order node
+     */
     protected long getStatistics(Order node) {
-    	long numtuples = calculateCost(node.getBase());
-    	Schema schema = node.getSchema();
+        return getSort(node.getBase());
+    }
+
+    /**
+     * Calculates the cost of a Groupby node
+     */
+    protected long getStatistics(GroupBy node) {
+        return getSort(node.getBase());
+    }
+
+    /**
+     * Calculates the cost of a Distinct node
+     */
+    protected long getStatistics(Distinct node) {
+    	return getSort(node.getBase());
+    }
+
+
+    protected long getSort(Operator node) {
+        long numtuples = calculateCost(node);
+        Schema schema = node.getSchema();
         long tuplesize = schema.getTupleSize();
         long pagesize = Math.max(Batch.getPageSize() / tuplesize, 1);
         long numpages = (long) Math.ceil((double) numtuples / (double) pagesize);
-        long numBuff = node.getNumBuff();
+        int numBuff = BufferManager.getBuffersPerJoin();
         long externalSortCost = getExternalSortCost(numpages, numBuff);
 
         cost = cost + externalSortCost;
         return numtuples;
     }
-    
+
     private long getExternalSortCost(long numPages, long numBuff) {
-    	double numSortedRuns = Math.ceil((double) numPages / (double) numBuff);
-    	long numMergePass = (long) Math.ceil(Math.log(numSortedRuns) / Math.log(numBuff - 1));
-    	long cost = 2 * numPages * (1+numMergePass);
-    	return cost;
+        double numSortedRuns = Math.ceil((double) numPages / (double) numBuff);
+        long numMergePass = (long) Math.ceil(Math.log(numSortedRuns) / Math.log(numBuff - 1));
+        long cost = 2 * numPages * (1+numMergePass);
+        return cost;
     }
-
 }
-
-
-
-
-
-
-
-
-
-
-

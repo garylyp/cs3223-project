@@ -43,11 +43,11 @@ public class RandomOptimizer {
      * * corresponding join operator implementation
      **/
     public static Operator makeExecPlan(Operator node) {
+        int numbuff = BufferManager.getBuffersPerJoin();
         if (node.getOpType() == OpType.JOIN) {
             Operator left = makeExecPlan(((Join) node).getLeft());
             Operator right = makeExecPlan(((Join) node).getRight());
             int joinType = ((Join) node).getJoinType();
-            int numbuff = BufferManager.getBuffersPerJoin();
             switch (joinType) {
                 case JoinType.NESTEDJOIN:
                     NestedJoin nj = new NestedJoin((Join) node);
@@ -78,12 +78,26 @@ public class RandomOptimizer {
             Operator base = makeExecPlan(((Project) node).getBase());
             ((Project) node).setBase(base);
             return node;
+        } else if (node.getOpType() == OpType.GROUPBY) {
+            Operator base = makeExecPlan(((GroupBy) node).getBase());
+            // If no buffer assigned, assign a minimum of 3
+            ((GroupBy) node).setNumBuff(numbuff);
+            numbuff = Math.max(3, BufferManager.getBuffersPerJoin());
+            ((GroupBy) node).setBase(base);
+            return node;
         } else if (node.getOpType() == OpType.ORDER) {
         	Operator base = makeExecPlan(((Order) node).getBase());
         	// If no buffer assigned, assign a minimum of 3
-        	int numbuff = Math.max(3, BufferManager.getBuffersPerJoin()); 
+        	numbuff = Math.max(3, BufferManager.getBuffersPerJoin());
         	((Order) node).setNumBuff(numbuff);
             ((Order) node).setBase(base);
+            return node;
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            // If no buffer assigned, assign a minimum of 3
+            numbuff = Math.max(3, BufferManager.getBuffersPerJoin());
+            ((Distinct) node).setNumBuff(numbuff);
+            Operator base = makeExecPlan(((Distinct) node).getBase());
+            ((Distinct) node).setBase(base);
             return node;
         } else {
             return node;
@@ -381,8 +395,12 @@ public class RandomOptimizer {
             return findNodeAt(((Select) node).getBase(), joinNum);
         } else if (node.getOpType() == OpType.PROJECT) {
             return findNodeAt(((Project) node).getBase(), joinNum);
+        } else if (node.getOpType() == OpType.GROUPBY) {
+            return findNodeAt(((GroupBy) node).getBase(), joinNum);
         } else if (node.getOpType() == OpType.ORDER) {
             return findNodeAt(((Order) node).getBase(), joinNum);
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            return findNodeAt(((Distinct) node).getBase(), joinNum);
         } else {
             return null;
         }
@@ -407,8 +425,16 @@ public class RandomOptimizer {
             modifySchema(base);
             ArrayList attrlist = ((Project) node).getProjAttr();
             node.setSchema(base.getSchema().subSchema(attrlist));
+        } else if (node.getOpType() == OpType.GROUPBY) {
+            Operator base = ((GroupBy) node).getBase();
+            modifySchema(base);
+            node.setSchema(base.getSchema());
         } else if (node.getOpType() == OpType.ORDER) {
             Operator base = ((Order) node).getBase();
+            modifySchema(base);
+            node.setSchema(base.getSchema());
+        } else if (node.getOpType() == OpType.DISTINCT) {
+            Operator base = ((Distinct) node).getBase();
             modifySchema(base);
             node.setSchema(base.getSchema());
         }
