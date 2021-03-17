@@ -92,14 +92,16 @@ public class Debug {
                 case JoinType.SORTMERGE:
                     System.out.print("SortMerge(");
                     break;
-                case JoinType.HASHJOIN:
-                    System.out.print("HashJoin(");
+                case JoinType.CROSSPRODUCT:
+                    System.out.print("CrossProduct(");
                     break;
             }
             PPrint(((Join) node).getLeft());
-            System.out.print("  [");
-            PPrint(((Join) node).getCondition());
-            System.out.print("]  ");
+            if (exprtype != JoinType.CROSSPRODUCT) {
+            	System.out.print("  [");
+            	PPrint(((Join) node).getCondition());
+            	System.out.print("]  ");
+            }
             PPrint(((Join) node).getRight());
             System.out.print(")");
 

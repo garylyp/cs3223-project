@@ -122,26 +122,28 @@ public class PlanCost {
         long rightpages = (long) Math.ceil(((double) righttuples) / (double) rightcapacity);
 
         double tuples = (double) lefttuples * righttuples;
-        for (Condition con : node.getConditionList()) {
-            Attribute leftjoinAttr = con.getLhs();
-            Attribute rightjoinAttr = (Attribute) con.getRhs();
-            int leftattrind = leftschema.indexOf(leftjoinAttr);
-            int rightattrind = rightschema.indexOf(rightjoinAttr);
-            leftjoinAttr = leftschema.getAttribute(leftattrind);
-            rightjoinAttr = rightschema.getAttribute(rightattrind);
+        int joinType = node.getJoinType();
+        if (joinType != JoinType.CROSSPRODUCT) {
+        	for (Condition con : node.getConditionList()) {
+                Attribute leftjoinAttr = con.getLhs();
+                Attribute rightjoinAttr = (Attribute) con.getRhs();
+                int leftattrind = leftschema.indexOf(leftjoinAttr);
+                int rightattrind = rightschema.indexOf(rightjoinAttr);
+                leftjoinAttr = leftschema.getAttribute(leftattrind);
+                rightjoinAttr = rightschema.getAttribute(rightattrind);
 
-            /** Number of distinct values of left and right join attribute **/
-            long leftattrdistn = ht.get(leftjoinAttr);
-            long rightattrdistn = ht.get(rightjoinAttr);
-            tuples /= (double) Math.max(leftattrdistn, rightattrdistn);
-            long mindistinct = Math.min(leftattrdistn, rightattrdistn);
-            ht.put(leftjoinAttr, mindistinct);
-            ht.put(rightjoinAttr, mindistinct);
+                /** Number of distinct values of left and right join attribute **/
+                long leftattrdistn = ht.get(leftjoinAttr);
+                long rightattrdistn = ht.get(rightjoinAttr);
+                tuples /= (double) Math.max(leftattrdistn, rightattrdistn);
+                long mindistinct = Math.min(leftattrdistn, rightattrdistn);
+                ht.put(leftjoinAttr, mindistinct);
+                ht.put(rightjoinAttr, mindistinct);
+            }
         }
         long outtuples = (long) Math.ceil(tuples);
 
         /** Calculate the cost of the operation **/
-        int joinType = node.getJoinType();
         long numbuff = BufferManager.getBuffersPerJoin();
         long joincost;
 
@@ -160,6 +162,9 @@ public class PlanCost {
             	long rightSortCost = getExternalSortCost(rightpages, node.getNumBuff());
             	joincost = leftSortCost + rightSortCost + leftpages + rightpages; // assuming one match per tuple
             	break;
+            case JoinType.CROSSPRODUCT:
+                joincost = leftpages * rightpages;
+                break;
             default:
                 System.out.println("join type is not supported");
                 return 0;

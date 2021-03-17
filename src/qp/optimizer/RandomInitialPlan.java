@@ -50,19 +50,23 @@ public class RandomInitialPlan {
      **/
     public Operator prepareInitialPlan() {
 
-
+    	System.out.printf("NumJoin: %d", numJoin);
+    	System.out.printf("fromList: %d", fromlist.size());
 
         tab_op_hash = new HashMap<>();
         createScanOp();
         createSelectOp();
         if (numJoin != 0) {
             createJoinOp();
+        } else if (fromlist.size() > 1) {
+        	createCrossProductOp();
+        }
+        
+        if (sqlquery.getOrderByList().size() > 0) {
+            createOrderByOp();
         }
         if (sqlquery.getGroupByList().size() > 0) {
             createGroupByOp();
-        }
-        if (sqlquery.getOrderByList().size() > 0) {
-            createOrderByOp();
         }
         createProjectOp();
         if (sqlquery.isDistinct()) {
@@ -165,8 +169,8 @@ public class RandomInitialPlan {
 
             /** randomly select a join type**/
             int numJMeth = JoinType.numJoinTypes();
-            // int joinMeth = RandNumb.randInt(0, numJMeth - 1);
-            int joinMeth = JoinType.BLOCKNESTED;
+            int joinMeth = RandNumb.randInt(0, numJMeth - 1);
+            joinMeth = JoinType.SORTMERGE;
             jn.setJoinType(joinMeth);
             modifyHashtable(left, jn);
             modifyHashtable(right, jn);
@@ -178,6 +182,46 @@ public class RandomInitialPlan {
          **/
         if (numJoin != 0)
             root = jn;
+    }
+    
+    /**
+     * create cross product operators
+     **/
+    public void createCrossProductOp() {
+    	int numCross = fromlist.size()-1; 
+        BitSet bitCList = new BitSet(numCross);
+        int crnum = RandNumb.randInt(0, numCross - 1);
+        Join jn = null;
+
+        /** Repeat until all the join conditions are considered **/
+        while (bitCList.cardinality() != numCross) {
+            /** If this condition is already consider chose
+             ** another join condition
+             **/
+            while (bitCList.get(crnum)) {
+                crnum = RandNumb.randInt(0, numCross - 1);
+            }
+            String lefttab = fromlist.get(crnum);
+            String righttab = fromlist.get(crnum+1);
+            Operator left = (Operator) tab_op_hash.get(lefttab);
+            Operator right = (Operator) tab_op_hash.get(righttab);
+            jn = new Join(left, right, new Condition(0), OpType.JOIN);
+            jn.setNodeIndex(crnum);
+            Schema newsche = left.getSchema().joinWith(right.getSchema());
+            jn.setSchema(newsche);
+
+            /** use cross product for join type**/
+            int joinMeth = JoinType.CROSSPRODUCT;
+            jn.setJoinType(joinMeth);
+            modifyHashtable(left, jn);
+            modifyHashtable(right, jn);
+            bitCList.set(crnum);
+        }
+
+        /** The last join operation is the root for the
+         ** constructed till now
+         **/
+        root = jn;
     }
 
     public void createProjectOp() {
