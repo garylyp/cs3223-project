@@ -67,6 +67,12 @@ public class RandomOptimizer {
                     smj.setRight(right);
                     smj.setNumBuff(numbuff);
                 	return smj;
+                case JoinType.CROSSPRODUCT:
+                    CrossProduct cp = new CrossProduct((Join) node);
+                    cp.setLeft(left);
+                    cp.setRight(right);
+                    cp.setNumBuff(numbuff);
+                	return cp;
                 default:
                     return node;
             }

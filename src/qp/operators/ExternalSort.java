@@ -144,6 +144,7 @@ public class ExternalSort extends Operator {
             System.exit(1);
 	    } catch (EOFException e) {
 	    	sortedFileEos = true;
+        	close();
 	    } catch (IOException io) {
             System.err.println("ExternalSort: " + io.getMessage());
             System.exit(1);
@@ -163,9 +164,7 @@ public class ExternalSort extends Operator {
             System.exit(1);
 	    }
     	File f = new File(rfname);
-        if (!f.delete()) {
-        	System.out.println("Unable to delete sorted relation: " + rfname);
-        }
+        f.delete();
         return true;
     }
 
