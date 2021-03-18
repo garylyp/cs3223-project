@@ -12,7 +12,7 @@ import java.io.*;
 import java.util.ArrayList;
 
 public class SortMergeJoin extends Join {
-    static final int DEBUGLEVEL = 3;         // Level of debug messages. 0 = no message. 3 = most verbose
+    static final int DEBUGLEVEL = 0;         // Level of debug messages. 0 = no message. 3 = most verbose
     
     int batchsize;                  // Number of tuples per out batch
     ArrayList<Integer> leftindex;   // Indices of the join attributes in left table

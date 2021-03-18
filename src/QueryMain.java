@@ -204,7 +204,6 @@ public class QueryMain {
 
         long endtime = System.currentTimeMillis();
         double executiontime = (endtime - starttime) / 1000.0;
-        System.out.println("GetBatch time = " + ExternalSort.totaltime / 1000.0);
         System.out.println("Execution time = " + executiontime);
         return executiontime;
     }
