@@ -13,6 +13,8 @@ import qp.utils.*;
 
 import java.io.*;
 
+import qp.operators.ExternalSort;
+
 public class QueryMain {
 
     static PrintWriter out;
