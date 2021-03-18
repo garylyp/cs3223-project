@@ -9,6 +9,7 @@ import qp.utils.Batch;
 import qp.utils.Schema;
 import qp.utils.Tuple;
 
+import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
@@ -23,7 +24,7 @@ import java.util.HashSet;
  * External Sort operator - sort data from a file
  */
 public class ExternalSort extends Operator {
-	
+	public static long totaltime = 0;
 	static final int DEBUGLEVEL = 0;
 	static int filenum = 0;
 
@@ -184,10 +185,11 @@ public class ExternalSort extends Operator {
 	 * Get the i-th page from file 
 	 */
     public Batch getBatch(int idx) {
+    	long starttime = System.currentTimeMillis();
     	ObjectInputStream tempSortedFileBase;
     	boolean tempSortedFileEos;
         try {
-        	tempSortedFileBase = new ObjectInputStream(new FileInputStream(rfname));
+        	tempSortedFileBase = new ObjectInputStream(new BufferedInputStream(new FileInputStream(rfname)));
             tempSortedFileEos = false;
         } catch (IOException io) {
             System.err.println("ExternalSort:getBatch: error in reading sorted file" + rfname);
@@ -214,6 +216,8 @@ public class ExternalSort extends Operator {
         } catch (IOException io) {
             System.err.println("ExternalSort:getBatch: Error in closing temporary file");
         }
+        long endtime = System.currentTimeMillis();
+        totaltime += (endtime-starttime);
         if (tempSortedFileEos) {
         	return null;
         } else {
