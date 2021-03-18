@@ -49,10 +49,6 @@ public class RandomInitialPlan {
      * prepare initial plan for the query
      **/
     public Operator prepareInitialPlan() {
-
-    	System.out.printf("NumJoin: %d", numJoin);
-    	System.out.printf("fromList: %d", fromlist.size());
-
         tab_op_hash = new HashMap<>();
         createScanOp();
         createSelectOp();

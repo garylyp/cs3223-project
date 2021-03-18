@@ -158,8 +158,8 @@ public class PlanCost {
                 joincost = leftBlockCount * rightpages;
                 break;
             case JoinType.SORTMERGE:
-            	long leftSortCost = getExternalSortCost(leftpages, node.getNumBuff());
-            	long rightSortCost = getExternalSortCost(rightpages, node.getNumBuff());
+            	long leftSortCost = getExternalSortCost(leftpages, numbuff);
+            	long rightSortCost = getExternalSortCost(rightpages, numbuff);
             	joincost = leftSortCost + rightSortCost + leftpages + rightpages; // assuming one match per tuple
             	break;
             case JoinType.CROSSPRODUCT:
