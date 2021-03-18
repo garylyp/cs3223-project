@@ -12,7 +12,7 @@ import java.io.*;
 import java.util.ArrayList;
 
 public class SortMergeJoin extends Join {
-    static final int DEBUGLEVEL = 0;         // Level of debug messages. 0 = no message. 3 = most verbose
+    static final int DEBUGLEVEL = 3;         // Level of debug messages. 0 = no message. 3 = most verbose
     
     int batchsize;                  // Number of tuples per out batch
     ArrayList<Integer> leftindex;   // Indices of the join attributes in left table
@@ -205,17 +205,21 @@ public class SortMergeJoin extends Join {
     		
     		if (matching) {
     			if (DEBUGLEVEL>=2) System.out.println("MATCHING");
-    			Tuple lefttuple = leftbatch.get(lcurs);
-                Tuple righttuple = rightbatch.get(rcurs);
-                Tuple outtuple = lefttuple.joinWith(righttuple);
-                
-                if (DEBUGLEVEL>=3) {
-                	System.out.println("out tuple");
-                    Debug.PPrint(outtuple);
-                }
-                
-                
-                
+    			Tuple lefttuple = leftbatch.get(lcurs);;
+    			Tuple righttuple = rightbatch.get(rcurs);
+    			int compareRes = Tuple.compareTuples(lefttuple, righttuple, leftindex, rightindex);
+    			if (compareRes == 0) {
+    				Tuple outtuple = lefttuple.joinWith(righttuple);
+    				outbatch.add(outtuple);	
+                    if (DEBUGLEVEL>=3) {
+                    	System.out.println("out tuple");
+                        Debug.PPrint(outtuple);
+                    }
+    			} else {
+    				// Shouldn't enter here
+    				matching = false;
+    				continue;
+    			}               
                 if (lcurs == lcursLimit-1 && rcurs == rcursLimit-1) {
                 	if (DEBUGLEVEL>=2) System.out.println("end of chain left and right");
                 	// Case 1: Both false
@@ -241,7 +245,7 @@ public class SortMergeJoin extends Join {
                 		} else {
                 			if (DEBUGLEVEL>=2) System.out.println("    Case2c: Next right match");
                 			matching = false;
-                			lcurs = lcursStart;
+                			lcurs = 0;
                 			rcurs = 0;
                 			checkNextRightPage = false;
                 		}
@@ -262,8 +266,10 @@ public class SortMergeJoin extends Join {
                 		} else {
                 			if (DEBUGLEVEL>=2) System.out.println("    Case3c: Next left match");
                 			matching = false;
-                			rpageidx = rpageidxStart;
-                			rightbatch = sortedRight.getBatch(rpageidx);
+                			if (rpageidx != rpageidxStart) {
+                				rpageidx = rpageidxStart;
+                    			rightbatch = sortedRight.getBatch(rpageidx);	
+                			}
                 			rcurs = rcursStart;
                 			lcurs = 0;
                 		}
@@ -298,27 +304,29 @@ public class SortMergeJoin extends Join {
                 		} else {
                 			if (DEBUGLEVEL>=2) System.out.println("    Case4b: Next right match");
                 			matching = false;
-                			lcurs = lcursStart;
+                			lcurs = 0;
                 			rcurs = 0;
                 			checkNextRightPage = false;
                 		}
                     	
                 	}
-                } else if (rcurs == rcursLimit-1) {
-                	if (DEBUGLEVEL>=2) System.out.println("end of chain right");
+                } else if (lcurs != lcursLimit-1 && rcurs == rcursLimit-1) {
+                	if (DEBUGLEVEL>=2) System.out.println("end of chain right"); // restart right
                 	lcurs++;
-                	if (rpageidx == rpageidxStart) {
-                		rcurs=rcursStart;
-                	} else {
-                		rcurs = 0;
-                	}
-                } else {
+	                if (rpageidx == rpageidxStart) {
+	            		rcurs=rcursStart;
+	            	} else {
+	            		rcurs = 0;
+	            	}
+                	if (DEBUGLEVEL>=2) System.out.println("end of chain left");
+                } else if (lcurs == lcursLimit-1 && rcurs != rcursLimit-1) {
+                	if (DEBUGLEVEL>=2) System.out.println("end of chain left");
+                	rcurs++;
+                } else { // (lcurs != lcursLimit-1 && rcurs != rcursLimit-1)
                 	if (DEBUGLEVEL>=2) System.out.println("end of chain left");
                 	rcurs++;
                 }
                 
-                	
-                outbatch.add(outtuple);	
                 if (outbatch.isFull() || isFinished) {
                 	if (DEBUGLEVEL>=3) {
                 		System.out.println("Page full. Return");
