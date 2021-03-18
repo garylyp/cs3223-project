@@ -1,4 +1,4 @@
 2
 8
-tid INTEGER 10 PK 4
+tid INTEGER 50 PK 4
 aid INTEGER 1 NK 4

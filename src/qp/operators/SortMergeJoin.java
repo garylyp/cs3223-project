@@ -12,7 +12,7 @@ import java.io.*;
 import java.util.ArrayList;
 
 public class SortMergeJoin extends Join {
-    static final int DEBUGLEVEL = 0;         // Level of debug messages. 0 = no message. 2 = most verbose
+    static final int DEBUGLEVEL = 0;         // Level of debug messages. 0 = no message. 3 = most verbose
     
     int batchsize;                  // Number of tuples per out batch
     ArrayList<Integer> leftindex;   // Indices of the join attributes in left table
@@ -48,7 +48,7 @@ public class SortMergeJoin extends Join {
         schema = jn.getSchema();
         jointype = jn.getJoinType();
         numBuff = jn.getNumBuff();
-        if (DEBUGLEVEL>=2) Debug.PPrint(this);
+        if (DEBUGLEVEL>=3) Debug.PPrint(this);
     }
 
     public boolean open() {
@@ -81,7 +81,7 @@ public class SortMergeJoin extends Join {
         	return false;
         }
         
-        if (DEBUGLEVEL>=2) {
+        if (DEBUGLEVEL>=3) {
         	System.out.println("Printing left and right sorted files");
             int k = 0;
             leftbatch = sortedLeft.getBatch(k);
@@ -209,7 +209,7 @@ public class SortMergeJoin extends Join {
                 Tuple righttuple = rightbatch.get(rcurs);
                 Tuple outtuple = lefttuple.joinWith(righttuple);
                 
-                if (DEBUGLEVEL>=1) {
+                if (DEBUGLEVEL>=3) {
                 	System.out.println("out tuple");
                     Debug.PPrint(outtuple);
                 }
@@ -265,6 +265,7 @@ public class SortMergeJoin extends Join {
                 			rpageidx = rpageidxStart;
                 			rightbatch = sortedRight.getBatch(rpageidx);
                 			rcurs = rcursStart;
+                			lcurs = 0;
                 		}
                 		
                 	// Case 4: left true, right true
@@ -285,13 +286,13 @@ public class SortMergeJoin extends Join {
                     			lcurs = 0;
                     			rcurs = 0;
                     			checkNextLeftPage = false;
-                    			checkNextLeftPage = false;
                     		} else {
                     			if (DEBUGLEVEL>=2) System.out.println("      Case4a3: Next left match");
                     			matching = false;
                     			rpageidx = rpageidxStart;
                     			rightbatch = sortedRight.getBatch(rpageidx);
-                    			rcurs = rcursStart;             			
+                    			rcurs = rcursStart;  
+                    			lcurs = 0;
                     		}           	
                 			
                 		} else {
@@ -306,7 +307,11 @@ public class SortMergeJoin extends Join {
                 } else if (rcurs == rcursLimit-1) {
                 	if (DEBUGLEVEL>=2) System.out.println("end of chain right");
                 	lcurs++;
-                	rcurs=0;
+                	if (rpageidx == rpageidxStart) {
+                		rcurs=rcursStart;
+                	} else {
+                		rcurs = 0;
+                	}
                 } else {
                 	if (DEBUGLEVEL>=2) System.out.println("end of chain left");
                 	rcurs++;
@@ -315,7 +320,7 @@ public class SortMergeJoin extends Join {
                 	
                 outbatch.add(outtuple);	
                 if (outbatch.isFull() || isFinished) {
-                	if (DEBUGLEVEL>=1) {
+                	if (DEBUGLEVEL>=3) {
                 		System.out.println("Page full. Return");
                 		Debug.PPrint(outbatch);
                 	}
@@ -327,7 +332,7 @@ public class SortMergeJoin extends Join {
     	if (DEBUGLEVEL>=2) System.out.println("isFinished " + isFinished);
     	if (DEBUGLEVEL>=2) System.out.println("isFull " + outbatch.isFull());
     	if (isFinished && outbatch.size() > 0) {
-        	if (DEBUGLEVEL>=1) {
+        	if (DEBUGLEVEL>=3) {
         		System.out.println("Page full. Return");
         		Debug.PPrint(outbatch);
         	}

@@ -1,4 +1,3 @@
-SELECT Test1.aid,Test2.tid 
+SELECT *
 FROM Test1,Test2
-WHERE Test2.tid>="5"
-GROUPBY Test2.tid
+WHERE Test2.tid=Test1.tid
