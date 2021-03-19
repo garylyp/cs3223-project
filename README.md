@@ -4,7 +4,7 @@ Based on a scaffold of the query processor, we have implemented join algorithms 
 
 ## Join Algorithms
 1. [Block-nested Join](./src/qp/operators/BlockNestedJoin.java) 
-2. [Sort-merge Join](./src/qp/operators/SortMergeJoin.java) 
+2. [Sort-merge Join](./src/qp/operators/SortMergeJoin.java) and [External Sort](./src/qp/operators/ExternalSort.java) subroutine
 
 ## Other Relational Operators
 1. [OrderBy](./src/qp/operators/OrderBy.java) 
