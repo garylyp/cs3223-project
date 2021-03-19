@@ -13,3 +13,6 @@ Based on a scaffold of the query processor, we have implemented join algorithms 
 
 ## Fixed Limitations
 Originally, the query processor was unable to perform cross joins. We have extended the query processor to allow cross joins via [CrossProduct](./src/qp/operators/CrossProduct.java).
+
+## Setup
+To set up the project locally as a user, you can refer to the instructions found on the [cs3223 website](https://www.comp.nus.edu.sg/~tankl/cs3223/project/user.htm).
