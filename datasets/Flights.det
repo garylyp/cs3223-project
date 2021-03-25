@@ -1,8 +1,8 @@
 6
 100
-flno INTEGER 10000 PK 4
+flno INTEGER 100 PK 4
 from STRING 21 NK 42
 to STRING 21 NK 42
-distance INTEGER 1000 NK 4
+distance INTEGER 25 NK 4
 departs REAL 1000 NK 4
 arrives REAL 1000 NK 4
